@@ -99,7 +99,11 @@ def calculate():
         return jsonify({"error": "Calculation failed", "details": str(e)}), 500
 
 
+
+# Initialize calculator on module load for production servers (Gunicorn)
+init_calculator()
+
 if __name__ == "__main__":
-    init_calculator()
     port = int(os.environ.get("PORT", 5001))
-    app.run(debug=True, host="0.0.0.0", port=port)
+    debug_mode = os.environ.get("FLASK_DEBUG", "True").lower() == "true"
+    app.run(debug=debug_mode, host="0.0.0.0", port=port)

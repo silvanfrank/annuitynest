@@ -13,17 +13,17 @@ body {
 }
 
 .container {
-    max-width: 600px;
+    max-width: 1400px;
     margin: 0 auto;
     background: white;
-    padding: 40px;
+    padding: 40px 60px;
     border-radius: 4px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    transition: max-width 0.3s ease;
 }
 
-.container.has-results {
-    max-width: 1400px;
+.annuity-form {
+    max-width: 600px;
+    margin: 0;
 }
 
 h1 {
@@ -177,6 +177,8 @@ input::placeholder {
 .results {
     margin-top: 30px;
     overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
 }
 
 .results h2 {
@@ -198,8 +200,8 @@ input::placeholder {
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
-    min-width: 1200px;
     background: white;
+    font-size: 14px;
 }
 
 .results-table th,
@@ -215,6 +217,41 @@ input::placeholder {
     color: white;
     font-weight: 600;
     white-space: nowrap;
+    position: sticky;
+    top: 0;
+}
+
+.results-table td {
+    white-space: nowrap;
+}
+
+/* Optimize column widths for better readability */
+.results-table th:first-child,
+.results-table td:first-child {
+    width: 60px;
+    text-align: center;
+}
+
+.results-table th:nth-child(2),
+.results-table td:nth-child(2) {
+    min-width: 180px;
+}
+
+.results-table th:nth-child(3),
+.results-table td:nth-child(3) {
+    min-width: 250px;
+}
+
+.results-table th:nth-child(n+4):nth-child(-n+8),
+.results-table td:nth-child(n+4):nth-child(-n+8) {
+    width: 100px;
+    text-align: right;
+}
+
+.results-table th:nth-child(n+9),
+.results-table td:nth-child(n+9) {
+    width: 120px;
+    text-align: right;
 }
 
 .results-table tr:hover {

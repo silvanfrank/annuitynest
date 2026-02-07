@@ -132,6 +132,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function displayVariableResults(result) {
+        // Expand container for table view
+        container.classList.add('has-results');
+        
         if (!result || !result.products || result.products.length === 0) {
             results.innerHTML = '<p class="disclaimer">No variable annuity products found. Please try adjusting your criteria.</p>';
             results.style.display = 'block';
