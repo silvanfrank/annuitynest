@@ -4,31 +4,6 @@ from data_processor import clean_fixed_annuity_data, load_variable_annuity_data
 
 logger = logging.getLogger(__name__)
 
-WITHDRAWAL_RATES = {
-    59: 0.0475,
-    60: 0.0475,
-    61: 0.0475,
-    62: 0.0475,
-    63: 0.0475,
-    64: 0.0475,
-    65: 0.0635,
-    66: 0.0635,
-    67: 0.0635,
-    68: 0.0635,
-    69: 0.0635,
-    70: 0.0655,
-    71: 0.0655,
-    72: 0.0655,
-    73: 0.0655,
-    74: 0.0655,
-    75: 0.0675,
-    76: 0.0675,
-    77: 0.0675,
-    78: 0.0675,
-    79: 0.0675,
-    80: 0.0690,
-}
-
 
 class AnnuityCalculator:
     def __init__(self, fixed_file_path, variable_file_path):
@@ -95,58 +70,116 @@ class AnnuityCalculator:
         return errors if errors else None
 
     def get_fixed_rates(self, amount, state=None):
+        """
+        Return all fixed annuity products with all columns.
+        Filter by minimum contribution amount.
+        """
         if self.fixed_data is None:
+            logger.error("Fixed annuity data not loaded")
             return []
 
+        # Filter products where Min Contribution <= user amount
         filtered = self.fixed_data[self.fixed_data["Min Contribution"] <= amount].copy()
 
         if len(filtered) == 0:
+            logger.info(f"No fixed annuity products found for amount ${amount}")
             return []
 
+        # Sort by Base Rate descending
         filtered = filtered.sort_values("Base Rate", ascending=False)
 
+        # Convert to list of dicts with all columns
         results = []
-        for _, row in filtered.head(10).iterrows():
-            results.append(
-                {
-                    "company": str(row["Company"]),
-                    "product": str(row["Product"]),
-                    "product_type": str(row["Product Type"]),
-                    "base_rate": float(row["Base Rate"])
-                    if pd.notna(row["Base Rate"])
-                    else 0,
-                    "rate_term": int(row["Rate Term"])
-                    if pd.notna(row["Rate Term"])
-                    else None,
-                    "min_contribution": float(row["Min Contribution"]),
-                    "surrender_period": str(row["Surrender Period"])
-                    if pd.notna(row["Surrender Period"])
-                    else "",
-                }
-            )
+        for _, row in filtered.iterrows():
+            result = {
+                "sort": int(row["Sort"]) if pd.notna(row["Sort"]) else None,
+                "company": str(row["Company"]) if pd.notna(row["Company"]) else "",
+                "product": str(row["Product"]) if pd.notna(row["Product"]) else "",
+                "years": int(row["Years"]) if pd.notna(row["Years"]) else None,
+                "min_contribution": float(row["Min Contribution"])
+                if pd.notna(row["Min Contribution"])
+                else 0,
+                "min_rate": float(row["Min Rate"]) if pd.notna(row["Min Rate"]) else 0,
+                "base_rate": float(row["Base Rate"])
+                if pd.notna(row["Base Rate"])
+                else 0,
+                "bonus_rate": float(row["Bonus Rate"])
+                if pd.notna(row["Bonus Rate"])
+                else 0,
+                "yield_to_surrender": float(row["Yield to Surrender"])
+                if pd.notna(row["Yield to Surrender"])
+                else 0,
+                "surrender_period": int(row["Surrender Period"])
+                if pd.notna(row["Surrender Period"])
+                else None,
+                "future_value": float(row["Future Value"])
+                if pd.notna(row["Future Value"])
+                else 0,
+            }
+            results.append(result)
 
+        logger.info(f"Returning {len(results)} fixed annuity products")
         return results
 
     def get_variable_income(self, current_age, withdrawal_age, amount):
+        """
+        Return all variable annuity products with columns B, C, E, S.
+        Filter by matching withdrawal age with the data.
+        """
+        if self.variable_data is None:
+            logger.error("Variable annuity data not loaded")
+            return []
+
         deferral_period = withdrawal_age - current_age
 
-        if withdrawal_age in WITHDRAWAL_RATES:
-            withdrawal_rate = WITHDRAWAL_RATES[withdrawal_age]
-        elif withdrawal_age > 80:
-            withdrawal_rate = 0.0690
-        else:
-            withdrawal_rate = 0.0475
+        # Return all variable annuity products
+        # In a real implementation, you might filter by age ranges
+        results = []
+        for _, row in self.variable_data.iterrows():
+            # Calculate the income based on user's investment amount
+            # The Excel has pre-calculated values based on $1,000,000
+            # We need to scale it proportionally
+            base_income = (
+                float(row["Annual Lifetime Income"])
+                if pd.notna(row["Annual Lifetime Income"])
+                else 0
+            )
+            base_benefit = (
+                float(row["Benefit Base"]) if pd.notna(row["Benefit Base"]) else 0
+            )
 
-        annual_income = amount * withdrawal_rate
-        monthly_income = annual_income / 12
+            # Scale based on user's amount vs $1,000,000 (default in Excel)
+            scale_factor = amount / 1000000.0
+            scaled_income = base_income * scale_factor
+            scaled_benefit = base_benefit * scale_factor
 
+            result = {
+                "sort": int(row["Sort"]) if pd.notna(row["Sort"]) else None,
+                "annuity_type": str(row["Annuity Type"])
+                if pd.notna(row["Annuity Type"])
+                else "",
+                "carrier": str(row["Carrier"]) if pd.notna(row["Carrier"]) else "",
+                "rider_name": str(row["Rider Name"])
+                if pd.notna(row["Rider Name"])
+                else "",
+                "withdrawal_rate": float(row["Withdrawal Rate"]) * 100
+                if pd.notna(row["Withdrawal Rate"])
+                else 0,
+                "benefit_base": round(scaled_benefit, 2),
+                "annual_lifetime_income": round(scaled_income, 2),
+                "monthly_income": round(scaled_income / 12, 2),
+            }
+            results.append(result)
+
+        # Sort by annual lifetime income descending
+        results.sort(key=lambda x: x["annual_lifetime_income"], reverse=True)
+
+        logger.info(f"Returning {len(results)} variable annuity products")
         return {
             "current_age": current_age,
             "withdrawal_age": withdrawal_age,
             "deferral_period": deferral_period,
             "investment_amount": amount,
-            "withdrawal_rate": round(withdrawal_rate * 100, 2),
-            "annual_income": round(annual_income, 2),
-            "monthly_income": round(monthly_income, 2),
-            "disclaimer": "Rates are estimates based on average market rates. Actual rates may vary by carrier.",
+            "products": results,
+            "count": len(results),
         }

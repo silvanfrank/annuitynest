@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const loading = document.getElementById('loading');
     const errorMessage = document.getElementById('error-message');
     const results = document.getElementById('results');
+    const container = document.querySelector('.container');
     const withdrawalAgeRow = document.getElementById('withdrawal-age-row');
     const withdrawalAgeInput = document.getElementById('withdrawal_age');
     const annuityTypeRadios = document.querySelectorAll('input[name="annuity_type"]');
@@ -82,6 +83,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function displayFixedResults(products) {
+        // Expand container for table view
+        container.classList.add('has-results');
+        
         if (!products || products.length === 0) {
             results.innerHTML = '<p class="disclaimer">No products found matching your criteria. Please try adjusting your investment amount.</p>';
             results.style.display = 'block';
@@ -91,32 +95,50 @@ document.addEventListener('DOMContentLoaded', function() {
         let html = '<h2>Available Fixed Annuity Products</h2>';
         html += '<table class="results-table">';
         html += '<thead><tr>';
+        html += '<th>Sort</th>';
         html += '<th>Company</th>';
         html += '<th>Product</th>';
+        html += '<th>Years</th>';
+        html += '<th>Min Contribution</th>';
+        html += '<th>Min Rate</th>';
         html += '<th>Base Rate</th>';
-        html += '<th>Term</th>';
-        html += '<th>Min Investment</th>';
+        html += '<th>Bonus Rate</th>';
+        html += '<th>Yield to Surrender</th>';
+        html += '<th>Surrender Period</th>';
+        html += '<th>Future Value</th>';
         html += '</tr></thead><tbody>';
         
         products.forEach(product => {
             html += '<tr>';
+            html += `<td>${product.sort || ''}</td>`;
             html += `<td>${escapeHtml(product.company)}</td>`;
             html += `<td>${escapeHtml(product.product)}</td>`;
-            html += `<td>${product.base_rate.toFixed(2)}%</td>`;
-            html += `<td>${product.rate_term || 'N/A'} years</td>`;
-            html += `<td>$${product.min_contribution.toLocaleString()}</td>`;
+            html += `<td>${product.years || 'N/A'}</td>`;
+            html += `<td>$${product.min_contribution ? product.min_contribution.toLocaleString() : '0'}</td>`;
+            html += `<td>${product.min_rate ? product.min_rate.toFixed(2) : '0.00'}%</td>`;
+            html += `<td>${product.base_rate ? product.base_rate.toFixed(2) : '0.00'}%</td>`;
+            html += `<td>${product.bonus_rate ? product.bonus_rate.toFixed(2) : '0.00'}%</td>`;
+            html += `<td>${product.yield_to_surrender ? product.yield_to_surrender.toFixed(3) : '0.000'}%</td>`;
+            html += `<td>${product.surrender_period || 'N/A'} years</td>`;
+            html += `<td>$${product.future_value ? product.future_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}</td>`;
             html += '</tr>';
         });
         
         html += '</tbody></table>';
-        html += '<p class="disclaimer">Product availability varies by state. Contact us to confirm eligibility and get detailed quotes.</p>';
+        html += `<p class="disclaimer">Showing all ${products.length} products. Product availability varies by state. Contact us to confirm eligibility and get detailed quotes.</p>`;
         
         results.innerHTML = html;
         results.style.display = 'block';
     }
     
     function displayVariableResults(result) {
-        let html = '<div class="variable-result">';
+        if (!result || !result.products || result.products.length === 0) {
+            results.innerHTML = '<p class="disclaimer">No variable annuity products found. Please try adjusting your criteria.</p>';
+            results.style.display = 'block';
+            return;
+        }
+        
+        let html = '<div class="variable-summary">';
         html += '<h3>Variable Annuity Projection</h3>';
         
         html += '<div class="result-item">';
@@ -139,24 +161,37 @@ document.addEventListener('DOMContentLoaded', function() {
         html += `<span class="result-value">${result.deferral_period} years</span>`;
         html += '</div>';
         
-        html += '<div class="result-item">';
-        html += '<span class="result-label">Withdrawal Rate:</span>';
-        html += `<span class="result-value">${result.withdrawal_rate}%</span>`;
         html += '</div>';
         
-        html += '<div class="result-item">';
-        html += '<span class="result-label">Annual Income:</span>';
-        html += `<span class="result-value">$${result.annual_income.toLocaleString()}</span>`;
-        html += '</div>';
+        // Product table with columns B, C, E, S
+        html += '<h3>Available Variable Annuity Products</h3>';
+        html += '<table class="results-table">';
+        html += '<thead><tr>';
+        html += '<th>Sort</th>';
+        html += '<th>Annuity Type</th>';
+        html += '<th>Carrier</th>';
+        html += '<th>Rider Name</th>';
+        html += '<th>Withdrawal Rate</th>';
+        html += '<th>Benefit Base</th>';
+        html += '<th>Annual Lifetime Income</th>';
+        html += '<th>Monthly Income</th>';
+        html += '</tr></thead><tbody>';
         
-        html += '<div class="result-item">';
-        html += '<span class="result-label">Monthly Income:</span>';
-        html += `<span class="result-value">$${result.monthly_income.toLocaleString()}</span>`;
-        html += '</div>';
+        result.products.forEach(product => {
+            html += '<tr>';
+            html += `<td>${product.sort || ''}</td>`;
+            html += `<td>${escapeHtml(product.annuity_type)}</td>`;
+            html += `<td>${escapeHtml(product.carrier)}</td>`;
+            html += `<td>${escapeHtml(product.rider_name)}</td>`;
+            html += `<td>${product.withdrawal_rate ? product.withdrawal_rate.toFixed(2) : '0.00'}%</td>`;
+            html += `<td>$${product.benefit_base ? product.benefit_base.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}</td>`;
+            html += `<td>$${product.annual_lifetime_income ? product.annual_lifetime_income.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}</td>`;
+            html += `<td>$${product.monthly_income ? product.monthly_income.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}</td>`;
+            html += '</tr>';
+        });
         
-        html += '</div>';
-        
-        html += `<p class="disclaimer">${result.disclaimer}</p>`;
+        html += '</tbody></table>';
+        html += `<p class="disclaimer">Showing all ${result.count} variable annuity products with columns B (Annuity Type), C (Carrier), E (Rider Name), and S (Annual Lifetime Income) from the Excel file. Rates are based on product data.</p>`;
         
         results.innerHTML = html;
         results.style.display = 'block';

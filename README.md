@@ -4,11 +4,29 @@ A Flask-based web application for generating annuity quotes. This MVP captures u
 
 ## Features
 
-- **Fixed Annuities**: Point-to-point investments paying interest over a duration
-- **Variable Annuities**: Mutual fund-like investments with annual withdrawals based on age
+- **Fixed Annuities**: Point-to-point investments paying interest over a duration - displays ALL columns and ALL rows from Excel
+- **Variable Annuities**: Mutual fund-like investments - displays columns B, C, E, S (Annuity Type, Carrier, Rider Name, Lifetime Income) from the Excel Formatted sheet
 - **Conditional Fields**: "Age of First Withdrawal" field appears only for Variable annuity type
 - **Responsive Design**: Mobile-friendly form matching Elementor/Astra theme styling
 - **iframe Ready**: Auto-resize messaging for WordPress embedding
+
+## Excel Data Structure
+
+### Fixed Annuity Rates.xlsx
+- **Sheet**: FORMATTED 1 (calculated results sheet)
+- **Output**: ALL columns (Sort, Company, Product, Years, Min Contribution, Min Rate, Base Rate, Bonus Rate, Yield to Surrender, Surrender Period, Future Value)
+- **Rows**: ALL matching rows (not limited to top 10)
+- **Filter**: Products where Min Contribution ≤ user's investment amount
+
+### Variable Annuity Rates.xlsx
+- **Sheet**: Formatted (web calculation sheet)
+- **Output**: Columns B, C, E, S per instructions:
+  - Column B (index 1): Annuity Type (e.g., "Variable")
+  - Column C (index 2): Carrier (e.g., "Brighthouse", "Corebridge")
+  - Column E (index 4): Rider Name (e.g., "FlexChoice Access - Level")
+  - Column S (index 18): Annual Lifetime Income
+- **Additional columns**: Withdrawal Rate, Benefit Base (for calculations)
+- **Calculation**: Income values are scaled proportionally based on user's investment amount vs Excel's default $1,000,000
 
 ## Quick Start
 
@@ -50,14 +68,16 @@ annuitynest/
 ├── logic.py              # AnnuityCalculator class with business logic
 ├── data_processor.py     # Excel data cleaning and parsing
 ├── requirements.txt      # Python dependencies
+├── test_implementation.py # Test script to verify implementation
 ├── templates/
 │   └── index.html       # Main form (matches Elementor design)
 ├── static/
-│   ├── style.css        # Astra theme matching styles
+│   ├── style.css        # Astra theme matching styles (navy blue theme)
 │   └── script.js        # Form handling and API calls
 └── excel files/         # Excel data files
     ├── Fixed Annuity Rates.xlsx
-    └── Variable Annuity Rates.xlsx
+    ├── Variable Annuity Rates.xlsx
+    └── Guaranteed Income Calculator 1 26 26.xlsx
 ```
 
 ## API Endpoints
@@ -96,10 +116,19 @@ Calculate annuity quote.
     "withdrawal_age": 65,
     "deferral_period": 15,
     "investment_amount": 100000,
-    "withdrawal_rate": 6.35,
-    "annual_income": 6350.0,
-    "monthly_income": 529.17,
-    "disclaimer": "Rates are estimates based on average market rates..."
+    "count": 37,
+    "products": [
+      {
+        "sort": 1,
+        "annuity_type": "Variable",
+        "carrier": "Brighthouse",
+        "rider_name": "FlexChoice Access - Level",
+        "withdrawal_rate": 6.4,
+        "benefit_base": 162889.46,
+        "annual_lifetime_income": 10424.93,
+        "monthly_income": 868.74
+      }
+    ]
   }
 }
 ```
@@ -110,14 +139,20 @@ Calculate annuity quote.
   "type": "fixed",
   "results": [
     {
-      "company": "Integrity Life Insurance",
-      "product": "New Momentum II",
-      "base_rate": 3.55,
-      "rate_term": 10,
-      "min_contribution": 50000
+      "sort": 43,
+      "company": "Delaware Life",
+      "product": "Apex Control MYGA",
+      "years": 7,
+      "min_contribution": 100000,
+      "min_rate": 0.25,
+      "base_rate": 4.9,
+      "bonus_rate": 0.0,
+      "yield_to_surrender": 4.9,
+      "surrender_period": 7,
+      "future_value": 161344.77
     }
   ],
-  "count": 10
+  "count": 6
 }
 ```
 
@@ -135,18 +170,59 @@ Calculate annuity quote.
 | Amount of Annuity | number | **Yes** | Minimum $50,000 |
 | Age of First Withdrawal | number | Variable only | Min age 59, shown only when Variable selected |
 
-## Variable Annuity Calculation
+## Implementation Details
 
-Withdrawal rates by age (simplified averages):
-- Age 59-64: 4.75%
-- Age 65-69: 6.35%
-- Age 70-74: 6.55%
-- Age 75-79: 6.75%
-- Age 80+: 6.90%
+### Fixed Annuity Calculation
 
-Formula: `Annual Income = Investment Amount × Withdrawal Rate`
+Data is read from the "FORMATTED 1" sheet which contains pre-calculated future values.
+
+**Displayed columns:**
+- Sort: Product sort order
+- Company: Insurance carrier name
+- Product: Product name
+- Years: Rate term in years
+- Min Contribution: Minimum investment required
+- Min Rate: Minimum interest rate
+- Base Rate: Base interest rate
+- Bonus Rate: Bonus interest rate (if any)
+- Yield to Surrender: Yield to surrender percentage
+- Surrender Period: Surrender charge period in years
+- Future Value: Calculated future value after term
+
+### Variable Annuity Calculation
+
+Data is read from the "Formatted" sheet with specific columns per instructions:
+
+**Displayed columns (B, C, E, S):**
+- Annuity Type (Column B): "Variable"
+- Carrier (Column C): Insurance company name
+- Rider Name (Column E): Product rider name
+- Annual Lifetime Income (Column S): Calculated annual income
+
+**Additional calculated fields:**
+- Withdrawal Rate: Percentage from column 16
+- Benefit Base: Benefit base amount from column 15
+- Monthly Income: Annual income ÷ 12
+
+**Scaling Formula:**
+```
+User Income = (Excel Income / $1,000,000) × User Investment Amount
+```
+
+This scales the Excel's default $1M calculation to the user's actual investment amount.
 
 ## Testing
+
+### Run Automated Tests
+
+```bash
+python3 test_implementation.py
+```
+
+This will verify:
+- Fixed annuity data loading (all columns, all rows)
+- Variable annuity data loading (columns B, C, E, S)
+- Calculator functionality with sample data
 
 ### Manual Testing via Browser
 
@@ -160,17 +236,17 @@ python app.py
 
 3. Test **Variable Annuity**:
    - Select "Variable" as Annuity Type
-   - Enter: Current Age: 50, Withdrawal Age: 65, Amount: $100,000
+   - Enter: Current Age: 55, Withdrawal Age: 65, Amount: $100,000
    - Fill in required fields (Email, State)
    - Click "Get my free quote"
-   - **Expected**: Shows Annual Income ~$6,350 with 6.35% withdrawal rate
+   - **Expected**: Shows table with 37 products sorted by Annual Lifetime Income, with columns: Sort, Annuity Type, Carrier, Rider Name, Withdrawal Rate, Benefit Base, Annual Lifetime Income, Monthly Income
 
 4. Test **Fixed Annuity**:
    - Select "Fixed" as Annuity Type
    - Enter: Amount: $100,000
    - Fill in required fields
    - Click "Get my free quote"
-   - **Expected**: Returns table of fixed annuity products
+   - **Expected**: Returns table of all 11 columns (Sort, Company, Product, Years, Min Contribution, Min Rate, Base Rate, Bonus Rate, Yield to Surrender, Surrender Period, Future Value) sorted by Base Rate descending
 
 5. Test **Conditional Field**:
    - Switch between "Fixed" and "Variable" types
@@ -195,7 +271,7 @@ curl -X POST http://localhost:5000/api/calculate \
   -d '{
     "amount": 100000,
     "annuity_type": "variable",
-    "current_age": 50,
+    "current_age": 55,
     "withdrawal_age": 65
   }'
 ```
@@ -264,10 +340,23 @@ Environment variables (optional):
 - `SECRET_KEY`: Flask secret key
 - `FLASK_ENV`: Set to `production` for production
 
-## Known Issues
+## Data Processing
 
-- Fixed annuity data parsing needs adjustment for the two-row Excel format
-- Currently returns 0 products for fixed annuities
+### Excel Sheet Selection
+
+**Fixed Annuity Rates.xlsx:**
+- Reads from "FORMATTED 1" sheet (not "ORIGINAL DATA")
+- This sheet contains pre-calculated results with user inputs at top
+
+**Variable Annuity Rates.xlsx:**
+- Reads from "Formatted" sheet (not "Original")
+- Extracts specific columns as requested (B, C, E, S)
+
+### Data Validation
+
+The implementation includes validation to ensure only valid data rows are processed:
+- Fixed: Checks for valid company names, skips header rows
+- Variable: Validates Annuity Type is "Variable", ensures carrier name is present
 
 ## License
 
