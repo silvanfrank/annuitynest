@@ -68,10 +68,24 @@ def load_variable_annuity_data(file_path):
     """
     Load variable annuity data from the Formatted sheet.
     Returns columns B, C, E, S as requested (Annuity Type, Carrier, Rider Name, Lifetime Income1)
+    Also returns the base investment amount used in the Excel calculations.
     """
     try:
         # Read from Formatted sheet
         df = pd.read_excel(file_path, sheet_name="Formatted", header=None)
+
+        # Read the investment amount from the input cells (row 3, column 2 - index 2)
+        base_investment = 1000000  # default
+        try:
+            if len(df) > 3 and pd.notna(df.iloc[3, 2]):
+                base_investment = parse_currency(df.iloc[3, 2])
+                logger.info(
+                    f"Found base investment amount in Excel: ${base_investment:,.2f}"
+                )
+        except Exception as e:
+            logger.warning(
+                f"Could not read investment amount from Excel, using default $1,000,000: {e}"
+            )
 
         data_rows = []
 
@@ -125,8 +139,10 @@ def load_variable_annuity_data(file_path):
                 )
 
         result_df = pd.DataFrame(data_rows)
+        # Store the base investment amount as an attribute of the dataframe
+        result_df.attrs["base_investment"] = base_investment
         logger.info(
-            f"Loaded {len(result_df)} variable annuity products from Formatted sheet"
+            f"Loaded {len(result_df)} variable annuity products from Formatted sheet (base investment: ${base_investment:,.2f})"
         )
         return result_df
 

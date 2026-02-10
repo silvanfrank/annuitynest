@@ -69,10 +69,23 @@ class AnnuityCalculator:
 
         return errors if errors else None
 
+    def calculate_fixed_future_value(self, amount, base_rate, years):
+        """
+        Calculate future value using compound interest formula.
+        Formula: FV = P × (1 + r)^n
+        Where P = principal (amount), r = rate (as decimal), n = years
+        """
+        if years is None or years <= 0:
+            return amount
+        rate_decimal = base_rate / 100.0
+        future_value = amount * ((1 + rate_decimal) ** years)
+        return round(future_value, 2)
+
     def get_fixed_rates(self, amount, state=None):
         """
         Return all fixed annuity products with all columns.
         Filter by minimum contribution amount.
+        Calculate future value based on user's investment amount.
         """
         if self.fixed_data is None:
             logger.error("Fixed annuity data not loaded")
@@ -91,18 +104,22 @@ class AnnuityCalculator:
         # Convert to list of dicts with all columns
         results = []
         for _, row in filtered.iterrows():
+            years = int(row["Years"]) if pd.notna(row["Years"]) else None
+            base_rate = float(row["Base Rate"]) if pd.notna(row["Base Rate"]) else 0
+
+            # Calculate future value based on user's actual investment amount
+            future_value = self.calculate_fixed_future_value(amount, base_rate, years)
+
             result = {
                 "sort": int(row["Sort"]) if pd.notna(row["Sort"]) else None,
                 "company": str(row["Company"]) if pd.notna(row["Company"]) else "",
                 "product": str(row["Product"]) if pd.notna(row["Product"]) else "",
-                "years": int(row["Years"]) if pd.notna(row["Years"]) else None,
+                "years": years,
                 "min_contribution": float(row["Min Contribution"])
                 if pd.notna(row["Min Contribution"])
                 else 0,
                 "min_rate": float(row["Min Rate"]) if pd.notna(row["Min Rate"]) else 0,
-                "base_rate": float(row["Base Rate"])
-                if pd.notna(row["Base Rate"])
-                else 0,
+                "base_rate": base_rate,
                 "bonus_rate": float(row["Bonus Rate"])
                 if pd.notna(row["Bonus Rate"])
                 else 0,
@@ -112,9 +129,7 @@ class AnnuityCalculator:
                 "surrender_period": int(row["Surrender Period"])
                 if pd.notna(row["Surrender Period"])
                 else None,
-                "future_value": float(row["Future Value"])
-                if pd.notna(row["Future Value"])
-                else 0,
+                "future_value": future_value,
             }
             results.append(result)
 
@@ -132,12 +147,18 @@ class AnnuityCalculator:
 
         deferral_period = withdrawal_age - current_age
 
+        # Get the base investment amount from the Excel file
+        # This is the amount the Excel calculations are based on
+        base_investment = self.variable_data.attrs.get("base_investment", 1000000)
+        logger.info(
+            f"Scaling variable annuity from base ${base_investment:,.2f} to user amount ${amount:,.2f}"
+        )
+
         # Return all variable annuity products
-        # In a real implementation, you might filter by age ranges
         results = []
         for _, row in self.variable_data.iterrows():
             # Calculate the income based on user's investment amount
-            # The Excel has pre-calculated values based on $1,000,000
+            # The Excel has pre-calculated values based on base_investment
             # We need to scale it proportionally
             base_income = (
                 float(row["Annual Lifetime Income"])
@@ -148,8 +169,8 @@ class AnnuityCalculator:
                 float(row["Benefit Base"]) if pd.notna(row["Benefit Base"]) else 0
             )
 
-            # Scale based on user's amount vs $1,000,000 (default in Excel)
-            scale_factor = amount / 1000000.0
+            # Scale based on user's amount vs the base investment amount from Excel
+            scale_factor = amount / base_investment if base_investment > 0 else 1
             scaled_income = base_income * scale_factor
             scaled_benefit = base_benefit * scale_factor
 

@@ -174,7 +174,7 @@ Calculate annuity quote.
 
 ### Fixed Annuity Calculation
 
-Data is read from the "FORMATTED 1" sheet which contains pre-calculated future values.
+Data is read from the "FORMATTED 1" sheet. Future values are calculated dynamically using the compound interest formula based on the user's actual investment amount.
 
 **Displayed columns:**
 - Sort: Product sort order
@@ -189,9 +189,18 @@ Data is read from the "FORMATTED 1" sheet which contains pre-calculated future v
 - Surrender Period: Surrender charge period in years
 - Future Value: Calculated future value after term
 
+**Future Value Formula:**
+```
+FV = P × (1 + r)^n
+```
+Where:
+- P = Principal (user's investment amount)
+- r = Base Rate (as decimal)
+- n = Years (term)
+
 ### Variable Annuity Calculation
 
-Data is read from the "Formatted" sheet with specific columns per instructions:
+Data is read from the "Formatted" sheet with specific columns. Values are scaled proportionally from the Excel's input values to the user's actual investment amount.
 
 **Displayed columns (B, C, E, S):**
 - Annuity Type (Column B): "Variable"
@@ -206,15 +215,18 @@ Data is read from the "Formatted" sheet with specific columns per instructions:
 
 **Scaling Formula:**
 ```
-User Income = (Excel Income / $1,000,000) × User Investment Amount
+Scale Factor = User Investment Amount / Excel Investment Amount
+User Income = Excel Income × Scale Factor
+User Benefit Base = Excel Benefit Base × Scale Factor
 ```
 
-This scales the Excel's default $1M calculation to the user's actual investment amount.
+The application reads the investment amount from the Excel's input cells (row 3, column 2) to determine the base for scaling calculations.
 
 ## Testing
 
 ### Run Automated Tests
 
+**Basic test suite:**
 ```bash
 python3 test_implementation.py
 ```
@@ -223,6 +235,16 @@ This will verify:
 - Fixed annuity data loading (all columns, all rows)
 - Variable annuity data loading (columns B, C, E, S)
 - Calculator functionality with sample data
+
+**Calculation verification tests:**
+```bash
+python3 test_fixes.py
+```
+
+This will verify:
+- Fixed annuity future value changes correctly with different investment amounts
+- Variable annuity values match Excel file exactly
+- Mathematical calculations are accurate
 
 ### Manual Testing via Browser
 
@@ -246,7 +268,10 @@ python app.py
    - Enter: Amount: $100,000
    - Fill in required fields
    - Click "Get my free quote"
-   - **Expected**: Returns table of all 11 columns (Sort, Company, Product, Years, Min Contribution, Min Rate, Base Rate, Bonus Rate, Yield to Surrender, Surrender Period, Future Value) sorted by Base Rate descending
+   - **Expected**: Returns table of all 11 columns sorted by Base Rate descending
+   - **Verify Math**: Future Value should change when you use a different amount (e.g., $525,000 should give a proportionally higher future value)
+   - Example: $100,000 at 4.9% for 7 years = $139,774.65
+   - Example: $525,000 at 4.9% for 7 years = $733,816.92
 
 5. Test **Conditional Field**:
    - Switch between "Fixed" and "Variable" types
