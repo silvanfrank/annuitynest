@@ -69,34 +69,34 @@ class AnnuityCalculator:
 
         return errors if errors else None
 
-    def calculate_fixed_future_value(self, amount, base_rate, years):
+    def calculate_fixed_future_value(self, amount, yield_to_surrender):
         """
         Calculate future value using compound interest formula.
-        Formula: FV = P × (1 + r)^n
-        Where P = principal (amount), r = rate (as decimal), n = years
+        Formula from Excel: =+$C$3*(1+(I10/100))^10
+        Note: Excel hardcodes 10 years for all products
+        Where:
+        - $C$3 = Investment amount (user input)
+        - I10 = Yield to Surrender rate (column I)
+        - Years = Fixed at 10 (as per Excel formula)
         """
-        if years is None or years <= 0:
+        if yield_to_surrender is None or yield_to_surrender <= 0:
             return amount
-        rate_decimal = base_rate / 100.0
-        future_value = amount * ((1 + rate_decimal) ** years)
+        rate_decimal = yield_to_surrender / 100.0
+        future_value = amount * ((1 + rate_decimal) ** 10)  # Excel uses 10 years
         return round(future_value, 2)
 
     def get_fixed_rates(self, amount, state=None):
         """
         Return all fixed annuity products with all columns.
-        Filter by minimum contribution amount.
+        Show all rows from Excel (no filtering by minimum contribution).
         Calculate future value based on user's investment amount.
         """
         if self.fixed_data is None:
             logger.error("Fixed annuity data not loaded")
             return []
 
-        # Filter products where Min Contribution <= user amount
-        filtered = self.fixed_data[self.fixed_data["Min Contribution"] <= amount].copy()
-
-        if len(filtered) == 0:
-            logger.info(f"No fixed annuity products found for amount ${amount}")
-            return []
+        # Show all products - no filtering (as per Excel "I would show all columns and all rows for output")
+        filtered = self.fixed_data.copy()
 
         # Sort by Base Rate descending
         filtered = filtered.sort_values("Base Rate", ascending=False)
@@ -106,9 +106,15 @@ class AnnuityCalculator:
         for _, row in filtered.iterrows():
             years = int(row["Years"]) if pd.notna(row["Years"]) else None
             base_rate = float(row["Base Rate"]) if pd.notna(row["Base Rate"]) else 0
+            yield_to_surrender = (
+                float(row["Yield to Surrender"])
+                if pd.notna(row["Yield to Surrender"])
+                else 0
+            )
 
             # Calculate future value based on user's actual investment amount
-            future_value = self.calculate_fixed_future_value(amount, base_rate, years)
+            # Using Yield to Surrender rate and 10 years (as per Excel formula)
+            future_value = self.calculate_fixed_future_value(amount, yield_to_surrender)
 
             result = {
                 "sort": int(row["Sort"]) if pd.notna(row["Sort"]) else None,
@@ -139,7 +145,9 @@ class AnnuityCalculator:
     def get_variable_income(self, current_age, withdrawal_age, amount):
         """
         Return all variable annuity products with columns B, C, E, S.
-        Filter by matching withdrawal age with the data.
+        Calculate Benefit Base and Annual Lifetime Income using Excel formulas:
+        - Benefit Base = Investment × (1 + Deferral Credit Rate)^Deferral Period
+        - Annual Lifetime Income = Benefit Base × Withdrawal Rate
         """
         if self.variable_data is None:
             logger.error("Variable annuity data not loaded")
@@ -147,32 +155,35 @@ class AnnuityCalculator:
 
         deferral_period = withdrawal_age - current_age
 
-        # Get the base investment amount from the Excel file
-        # This is the amount the Excel calculations are based on
-        base_investment = self.variable_data.attrs.get("base_investment", 1000000)
+        if deferral_period <= 0:
+            logger.error(f"Invalid deferral period: {deferral_period}")
+            return []
+
         logger.info(
-            f"Scaling variable annuity from base ${base_investment:,.2f} to user amount ${amount:,.2f}"
+            f"Calculating variable annuity for ${amount:,.2f}, {deferral_period} year deferral period"
         )
 
-        # Return all variable annuity products
+        # Return all variable annuity products with calculated values
         results = []
         for _, row in self.variable_data.iterrows():
-            # Calculate the income based on user's investment amount
-            # The Excel has pre-calculated values based on base_investment
-            # We need to scale it proportionally
-            base_income = (
-                float(row["Annual Lifetime Income"])
-                if pd.notna(row["Annual Lifetime Income"])
-                else 0
+            # Get the deferral credit rate and withdrawal rate
+            deferral_credit_rate = (
+                float(row["Deferral Credit"]) if pd.notna(row["Deferral Credit"]) else 0
             )
-            base_benefit = (
-                float(row["Benefit Base"]) if pd.notna(row["Benefit Base"]) else 0
+            withdrawal_rate = (
+                float(row["Withdrawal Rate"]) if pd.notna(row["Withdrawal Rate"]) else 0
             )
 
-            # Scale based on user's amount vs the base investment amount from Excel
-            scale_factor = amount / base_investment if base_investment > 0 else 1
-            scaled_income = base_income * scale_factor
-            scaled_benefit = base_benefit * scale_factor
+            # Calculate Benefit Base using formula: Investment × (1 + Deferral Credit Rate)^Deferral Period
+            # Note: Deferral Credit Rate is stored as decimal (e.g., 0.05 for 5%)
+            if deferral_credit_rate > 0:
+                benefit_base = amount * ((1 + deferral_credit_rate) ** deferral_period)
+            else:
+                benefit_base = amount
+
+            # Calculate Annual Lifetime Income: Benefit Base × Withdrawal Rate
+            # Note: Withdrawal Rate is stored as decimal (e.g., 0.064 for 6.4%)
+            annual_lifetime_income = benefit_base * withdrawal_rate
 
             result = {
                 "sort": int(row["Sort"]) if pd.notna(row["Sort"]) else None,
@@ -183,17 +194,16 @@ class AnnuityCalculator:
                 "rider_name": str(row["Rider Name"])
                 if pd.notna(row["Rider Name"])
                 else "",
-                "withdrawal_rate": float(row["Withdrawal Rate"]) * 100
-                if pd.notna(row["Withdrawal Rate"])
-                else 0,
-                "benefit_base": round(scaled_benefit, 2),
-                "annual_lifetime_income": round(scaled_income, 2),
-                "monthly_income": round(scaled_income / 12, 2),
+                "withdrawal_rate": withdrawal_rate
+                * 100,  # Convert to percentage for display
+                "benefit_base": round(benefit_base, 2),
+                "annual_lifetime_income": round(annual_lifetime_income, 2),
+                "monthly_income": round(annual_lifetime_income / 12, 2),
             }
             results.append(result)
 
-        # Sort by annual lifetime income descending
-        results.sort(key=lambda x: x["annual_lifetime_income"], reverse=True)
+        # Sort by Sort column (ascending) to match Excel order
+        results.sort(key=lambda x: x["sort"] if x["sort"] is not None else float("inf"))
 
         logger.info(f"Returning {len(results)} variable annuity products")
         return {

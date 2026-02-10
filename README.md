@@ -174,7 +174,7 @@ Calculate annuity quote.
 
 ### Fixed Annuity Calculation
 
-Data is read from the "FORMATTED 1" sheet. Future values are calculated dynamically using the compound interest formula based on the user's actual investment amount.
+Data is read from the "FORMATTED 1" sheet. All products are displayed (no filtering), and future values are calculated dynamically using the Excel formula.
 
 **Displayed columns:**
 - Sort: Product sort order
@@ -189,18 +189,23 @@ Data is read from the "FORMATTED 1" sheet. Future values are calculated dynamica
 - Surrender Period: Surrender charge period in years
 - Future Value: Calculated future value after term
 
-**Future Value Formula:**
+**Product Display:**
+- All 170 products are shown (as per Excel instruction: "I would show all columns and all rows for output")
+- No filtering by minimum contribution amount
+- Sorted by Yield to Surrender (descending)
+
+**Future Value Formula (from Excel):**
 ```
-FV = P × (1 + r)^n
+FV = Investment × (1 + Yield to Surrender/100)^10
 ```
 Where:
-- P = Principal (user's investment amount)
-- r = Base Rate (as decimal)
-- n = Years (term)
+- Investment = User's investment amount (replaces $C$3 in Excel)
+- Yield to Surrender = Yield to surrender percentage from column I
+- Years = Fixed at 10 years (as per Excel formula `=+$C$3*(1+(I10/100))^10`)
 
 ### Variable Annuity Calculation
 
-Data is read from the "Formatted" sheet with specific columns. Values are scaled proportionally from the Excel's input values to the user's actual investment amount.
+Data is read from the "Formatted" sheet with specific columns. Values are calculated using the same formulas as the Excel file.
 
 **Displayed columns (B, C, E, S):**
 - Annuity Type (Column B): "Variable"
@@ -208,19 +213,27 @@ Data is read from the "Formatted" sheet with specific columns. Values are scaled
 - Rider Name (Column E): Product rider name
 - Annual Lifetime Income (Column S): Calculated annual income
 
-**Additional calculated fields:**
-- Withdrawal Rate: Percentage from column 16
-- Benefit Base: Benefit base amount from column 15
-- Monthly Income: Annual income ÷ 12
+**Product Display:**
+- All products displayed (no filtering)
+- Sorted by Sort column (ascending) to match Excel order
+- Shows columns B, C, E, and S as specified in Excel
 
-**Scaling Formula:**
+**Calculated fields using Excel formulas:**
+- **Benefit Base**: Calculated using deferral credit rate and deferral period
+- **Withdrawal Rate**: Percentage from column Q
+- **Annual Lifetime Income**: Benefit Base × Withdrawal Rate
+- **Monthly Income**: Annual income ÷ 12
+
+**Calculation Formulas:**
 ```
-Scale Factor = User Investment Amount / Excel Investment Amount
-User Income = Excel Income × Scale Factor
-User Benefit Base = Excel Benefit Base × Scale Factor
+Benefit Base = Investment × (1 + Deferral Credit Rate)^Deferral Period
+Annual Lifetime Income = Benefit Base × Withdrawal Rate
 ```
 
-The application reads the investment amount from the Excel's input cells (row 3, column 2) to determine the base for scaling calculations.
+Where:
+- Deferral Credit Rate = Product-specific roll-up rate (e.g., 5%, 6%, 7%)
+- Deferral Period = Withdrawal Age - Current Age
+- Withdrawal Rate = Product-specific percentage (e.g., 6.4%)
 
 ## Testing
 

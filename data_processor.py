@@ -22,8 +22,10 @@ def clean_fixed_annuity_data(file_path):
 
             # Check if this is a data row (has company name in column 1)
             if pd.notna(row[1]) and isinstance(row[1], str):
-                # Skip header rows
-                if "Company" in str(row[1]) or "Inputs from website" in str(row[1]):
+                # Skip header rows (exact match only)
+                if str(
+                    row[1]
+                ).strip() == "Company Name" or "Inputs from website" in str(row[1]):
                     continue
 
                 company = row[1]
@@ -119,12 +121,11 @@ def load_variable_annuity_data(file_path):
                 # Column E (index 4): Rider Name
                 rider_name = str(row[4]).strip() if pd.notna(row[4]) else ""
 
-                # Column S (index 18): Lifetime Income1
-                lifetime_income = parse_currency(row[18]) if pd.notna(row[18]) else 0
+                # Column F (index 5): Deferral Credit Rate (for formula calculation)
+                deferral_credit = parse_percentage(row[5]) if pd.notna(row[5]) else 0
 
-                # Also get additional useful columns
+                # Column Q (index 16): Withdrawal Rate
                 withdrawal_rate = parse_percentage(row[16]) if pd.notna(row[16]) else 0
-                benefit_base = parse_currency(row[15]) if pd.notna(row[15]) else 0
 
                 data_rows.append(
                     {
@@ -132,9 +133,8 @@ def load_variable_annuity_data(file_path):
                         "Annuity Type": annuity_type,
                         "Carrier": carrier,
                         "Rider Name": rider_name,
+                        "Deferral Credit": deferral_credit,
                         "Withdrawal Rate": withdrawal_rate,
-                        "Benefit Base": benefit_base,
-                        "Annual Lifetime Income": lifetime_income,
                     }
                 )
 
