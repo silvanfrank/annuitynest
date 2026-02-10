@@ -24,15 +24,19 @@ All notable changes to the Annuity Nest MVP project.
 - **Issue**: Calculated values didn't match the Excel file values
 - **Root Cause**: Using simple scaling instead of Excel's formula-based calculations
 - **Solution**: Implemented Excel formulas:
-  - Benefit Base = Investment × (1 + Deferral Credit Rate)^Deferral Period
+  - Benefit Base = Investment + (Investment × Deferral Credit Rate × Deferral Period) [SIMPLE INTEREST]
   - Annual Lifetime Income = Benefit Base × Withdrawal Rate
 - **Result**: Values now match Excel exactly and work correctly for any age/deferral period combination
 
 **Example:** Age 60, Withdrawal 65 (5-year deferral), $525,000 investment
 - Brighthouse FlexChoice Access - Level:
   - Deferral Credit Rate: 5%
-  - Benefit Base: $525,000 × (1.05)^5 = $670,047.82 ✓
-  - Annual Income: $670,047.82 × 6.4% = $42,883.06 ✓
+  - Benefit Base: $525,000 + ($525,000 × 0.05 × 5) = $656,250.00 ✓
+  - Annual Income: $656,250.00 × 6.4% = $42,000.00 ✓
+- Corebridge Polaris Income Plus Daily Flex - Option 3:
+  - Deferral Credit Rate: 6%
+  - Benefit Base: $525,000 + ($525,000 × 0.06 × 5) = $682,500.00 ✓
+  - Annual Income: $682,500.00 × 6.15% = $41,973.75 ✓
 
 ### Technical Changes
 
@@ -42,6 +46,7 @@ All notable changes to the Annuity Nest MVP project.
 - Updated `get_fixed_rates()` to show ALL products (removed minimum contribution filtering)
 - Updated `get_fixed_rates()` to use 10 years for all products (matching Excel formula `^10`)
 - Updated `get_variable_income()` to use Excel formulas for Benefit Base and Annual Lifetime Income calculations
+  - Uses simple interest: `=+$C$4+($C$4*F12*$C$5)` (not compound interest)
 - Updated `get_variable_income()` to sort by Sort column (not by income)
 - Future value now rounds to 2 decimal places for currency display
 

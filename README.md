@@ -224,16 +224,17 @@ Data is read from the "Formatted" sheet with specific columns. Values are calcul
 - **Annual Lifetime Income**: Benefit Base × Withdrawal Rate
 - **Monthly Income**: Annual income ÷ 12
 
-**Calculation Formulas:**
+**Calculation Formulas (from Excel):**
 ```
-Benefit Base = Investment × (1 + Deferral Credit Rate)^Deferral Period
+Benefit Base = Investment + (Investment × Deferral Credit Rate × Deferral Period)
 Annual Lifetime Income = Benefit Base × Withdrawal Rate
 ```
 
 Where:
+- Benefit Base uses **simple interest** (not compound): `=+$C$4+($C$4*F12*$C$5)`
 - Deferral Credit Rate = Product-specific roll-up rate (e.g., 5%, 6%, 7%)
 - Deferral Period = Withdrawal Age - Current Age
-- Withdrawal Rate = Product-specific percentage (e.g., 6.4%)
+- Withdrawal Rate = Product-specific percentage (e.g., 6.15%)
 
 ## Testing
 

@@ -174,10 +174,13 @@ class AnnuityCalculator:
                 float(row["Withdrawal Rate"]) if pd.notna(row["Withdrawal Rate"]) else 0
             )
 
-            # Calculate Benefit Base using formula: Investment × (1 + Deferral Credit Rate)^Deferral Period
-            # Note: Deferral Credit Rate is stored as decimal (e.g., 0.05 for 5%)
+            # Calculate Benefit Base using Excel formula: Investment + (Investment × Deferral Credit Rate × Deferral Period)
+            # This is SIMPLE INTEREST, not compound interest
+            # Formula from Excel: =+$C$4+($C$4*F12*$C$5)
             if deferral_credit_rate > 0:
-                benefit_base = amount * ((1 + deferral_credit_rate) ** deferral_period)
+                benefit_base = amount + (
+                    amount * deferral_credit_rate * deferral_period
+                )
             else:
                 benefit_base = amount
 
