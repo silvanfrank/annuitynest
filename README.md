@@ -28,6 +28,56 @@ A Flask-based web application for generating annuity quotes. This MVP captures u
 - **Additional columns**: Withdrawal Rate, Benefit Base (for calculations)
 - **Calculation**: Income values are scaled proportionally based on user's investment amount vs Excel's default $1,000,000
 
+## Excel Data Flow & Updates
+
+### 1. File Updates
+The application loads Excel data **into memory at startup**.
+- **If you update the Excel files**: You must **RESTART** the application for changes to take effect.
+- **On a server**: Redeploy the application or restart the service.
+
+### 2. Formulas vs. Values
+The application reads **Values**, not formulas.
+- **Formulas in Excel**: Are NOT executed by the Python application.
+- **Calculations**: Are re-implemented in Python (`logic.py`) using the static rates read from Excel.
+
+### 3. Consumed Data Points
+The application strictly depends on the following columns. If these columns are moved or renamed, the application may break.
+
+**Fixed Annuities (Sheet: "FORMATTED 1")**
+- **Company Name** (Column B)
+- **Product Name** (Column C)
+- **Rate Term / Years** (Column D)
+- **Minimum Contribution** (Column E)
+- **Minimum Rate** (Column F)
+- **Base Rate** (Column G)
+- **Bonus Rate** (Column H)
+- **Yield to Surrender** (Column I) - *Used for unexpected calculations*
+- **Surrender Period** (Column J)
+
+**Variable Annuities (Sheet: "Formatted")**
+- **Annuity Type** (Column B) - *Must be "Variable"*
+- **Carrier Name** (Column C)
+- **Rider Name** (Column E)
+- **Deferral Credit Rate** (Column F) - *Used for Benefit Base calculation*
+- **Withdrawal Rate** (Column Q) - *Used for Income calculation*
+
+### 4. Replicated Logic (Formulas)
+The following Excel logic is hardcoded in Python (`logic.py`):
+
+**Fixed Annuity Future Value**:
+- Excel: `= Investment * (1 + Yield_To_Surrender)^10`
+- Python: `User_Amount * ((1 + Yield_To_Surrender_Rate) ** 10)`
+- *Note: This hardcodes the term to 10 years, matching the Excel formula*
+
+**Variable Annuity Benefit Base**:
+- Excel: `= Investment + (Investment * Deferral_Credit_Rate * Deferral_Period)`
+- Python: `User_Amount + (User_Amount * Deferral_Credit_Rate * Deferral_Period)`
+- *Note: This is Simple Interest, matching the Excel formula*
+
+**Variable Annuity Annual Lifetime Income**:
+- Excel: `= Benefit_Base * Withdrawal_Rate`
+- Python: `Benefit_Base * Withdrawal_Rate`
+
 ## Quick Start
 
 ### Prerequisites
