@@ -19,7 +19,6 @@ EXCEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "excel file
 
 def init_calculator():
     global calculator
-    logger.info("Starting init_calculator...")
     try:
         fixed_path = os.path.join(EXCEL_DIR, "Fixed Annuity Rates.xlsx")
         variable_path = os.path.join(EXCEL_DIR, "Variable Annuity Rates.xlsx")
@@ -31,12 +30,11 @@ def init_calculator():
             logger.error(f"Variable Annuity Rates file not found: {variable_path}")
             return False
 
-        logger.info(f"Loading Excel files from: {EXCEL_DIR}")
         calculator = AnnuityCalculator(fixed_path, variable_path)
         logger.info("AnnuityCalculator initialized successfully")
         return True
     except Exception as e:
-        logger.error(f"Failed to initialize calculator: {str(e)}", exc_info=True)
+        logger.error(f"Failed to initialize calculator: {str(e)}")
         return False
 
 
@@ -47,9 +45,7 @@ def index():
 
 @app.route("/health")
 def health():
-    status = "healthy" if calculator is not None else "unhealthy"
-    logger.info(f"Health check requested. Status: {status}")
-    return jsonify({"status": status, "calculator_loaded": calculator is not None})
+    return jsonify({"status": "healthy", "calculator_loaded": calculator is not None})
 
 
 @app.route("/api/calculate", methods=["POST"])
