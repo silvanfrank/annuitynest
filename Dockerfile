@@ -15,4 +15,4 @@ EXPOSE 5000
 
 # Run with Gunicorn
 # 4 workers, bind to 0.0.0.0:5000, access logs to stdout
-CMD ["gunicorn", "--workers", "4", "--bind", "0.0.0.0:5000", "--access-logfile", "-", "app:app"]
+CMD ["gunicorn", "--workers", "2", "--preload", "--timeout", "120", "--bind", "0.0.0.0:5000", "--access-logfile", "-", "app:app"]

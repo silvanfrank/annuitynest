@@ -67,7 +67,16 @@ Add an A record in your DNS provider:
 annuity.yourdomain.com → [Your Coolify Server IP]
 ```
 
-### 2.5. Deploy
+### 2.6. Health Check Configuration
+**Important:** Configure the health check so Coolify knows when your app is ready.
+
+- **Path:** `/health`
+- **Port:** `5000`
+- **Interval:** `10`
+- **Timeout:** `5`
+- **Retries:** `5`
+
+### 2.7. Deploy
 1. Click **Deploy**
 2. Watch the build logs. It will pip install dependencies and start Gunicorn.
 3. Wait for the container to start.
@@ -109,7 +118,9 @@ Visit `https://annuity.yourdomain.com` in your browser. You should see the Annui
 **Solution:** Ensure **Base Directory** is `/` and **Dockerfile Location** is `/Dockerfile`.
 
 ### Issue: 502 Bad Gateway
+**Cause:** Application failed to start or timed out.
 **Solution:**
+- We have optimized the `Dockerfile` to use `--preload` and `2 workers` to save memory.
 - Verify **Port Exposes** is set to `5000`.
 - Check logs to see if Gunicorn started successfully.
 - Ensure `init_calculator()` does not crash the app on startup.
